@@ -34,6 +34,7 @@ Zoho CRM の Deluge 関数を実装・レビューする際の言語制約、禁
 
 - **automation**: 必ず `void`。`return;` のみ。throw は使用不可。
 - **button（カスタムボタン）**: `String button.関数名(...)`。全パスで return 必須。try-catch は避け、単純な if で分岐する形式を推奨。
+- **standalone（単独関数）**: 戻り値は **string 型のみ**使用可能。bool / int 等を返すと "Invalid return Type" エラーになる。真偽や数値で返したい場合は `"true"` / `"false"` や数値の文字列を返し、呼び出し側で `ret == "true"` のように比較すること。
 - **入力規則**: `map validation_rule.関数名(string crmAPIRequest)`。response に `status` と `message` を設定して return。
 
 ### 型・代替パターン
