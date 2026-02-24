@@ -100,6 +100,17 @@ Zoho CRM の Deluge 関数を実装・レビューする際の言語制約、禁
 - Zoho CRM / Deluge の API・メソッドは公式ドキュメントを最優先。パラメータ名・接続名・必須ヘッダは公式例に厳密に従う。
 - 参照コードを指定された場合は、その実装とスタイルを最優先で模倣する。
 
+### 実行時・接続で判明した仕様
+
+実装・テストで判明した言語仕様と接続まわりの注意点。
+
+- **ローカル変数の型宣言**: 関数内で `string dc = ...` のように**ローカル変数に型を付けると Syntax error**（Expecting 'throws', ... Found 'dc'）になる。ローカル変数には型を付けず `dc = ...` と代入のみ書く。引数・戻り値の型は宣言してよい。
+- **TEXT 型と比較演算子**: 演算子 `>` は **TEXT（文字列）式には使えない**。"Operator > is not valid for TEXT expression"。大小比較が必要な場合は、数値に変換するか Date 型に変換してから比較する。
+- **日付の比較**: 文字列の `compareTo()` は存在しない（禁止API）。日付は **`.todate()` で Date 型に変換**し、Date 同士で `>`, `==` を使って比較する。変換は try-catch で囲む。
+- **return 文（string を返す関数）**: try-catch の両方で return していても **"Missing return statement: Provide STRING expression to return"** になることがある。try-catch の直後に明示的に `return "false";` などを1行置く。
+- **Invalid Domain**: invokeurl の URL のドメインが、使用する接続（例: crm_module）の**許可ドメインと一致している必要がある**。組織変数 `crm_base_url`（例: `https://www.zohoapis.jp/crm/v8/`）でベースURLを固定するとよい。`dc` が空のときは `"jp"` をフォールバックする実装も有効。
+- **401 OAUTH_SCOPE_MISMATCH**: "invalid oauth scope to access this URL" は、その接続に **CRM API 用の OAuth スコープが付与されていない**ため。接続の編集でスコープに `ZohoCRM.modules.ALL` 等を追加し、**再接続（再認証）**する。
+
 ---
 
 ## 3. 実際の使用例（実装時はこの形に従う）
