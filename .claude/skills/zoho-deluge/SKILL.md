@@ -12,7 +12,7 @@ Zoho CRM の Deluge 関数を実装・レビューする際の言語制約、禁
 
 - **C言語スタイルの for**: 使用禁止。`for each item in list` のみ可。
 - **while ループ**: 使用禁止。ループは「回数用リスト」＋ `for each` で代替。
-- **三項演算子 (?:)**: 使用禁止。ifnull は可。
+- **三項演算子 (?:)**: 使用禁止。`?` を記述すると "Unexpected token found '?'" になる。if 文で代替すること。ifnull は可。
 - **関数のネスト**: 1関数1タスク。関数内で別関数を定義しない。
 - **invokeurl ブロック内のコメント**: 禁止（`//` も `/* */` も不可）。
 - **行末コメント**: 禁止。コメントは独立行に書く。
@@ -42,25 +42,6 @@ Zoho CRM の Deluge 関数を実装・レビューする際の言語制約、禁
 - リスト結合: `join()` 禁止 → 空文字＋`for each` で連結。
 - ループ回数指定: 長さ n の文字列を `"".leftPad(n)` で作り、`replaceAll`/`toList()` 等でリスト化して `for each`。
 - リスト型判定: `isList()` 禁止 → `reason.toString()` の `startsWith("[")` かつ `endsWith("]")` で判定。
-
-### Deluge でサポートするデータ型（Zoho で設定できる引数・変数の型）
-
-Zoho の関数で引数を追加する際に指定できるデータ型。変数が格納するデータの種類を表し、型が異なると演算できない（例: 数値と日付の乗算は不可）。
-
-| 型 | 説明 | 記述例・注意 |
-|----|------|-----------------------------|
-| **Text** | 文字の並び。文字・記号・数字などを**ダブルクォート**で囲む。 | 名前、メール欄など。 |
-| **Number** | 整数。小数は含まない。小数と演算した結果は Decimal になる。 | 数値欄、自動採番欄など。 |
-| **Decimal** | 小数。通貨・パーセントなどに使用。 | 通貨欄、パーセント欄など。 |
-| **Boolean** | 真偽。`true` または `false`。**クォートで囲まない**。大文字小文字は区別しない。 | チェックボックス（Decision Box）欄など。 |
-| **Date-Time** | 日付・日時。Zoho の設定で指定した形式。**シングルクォート**で囲む。時刻なしの場合は 0:00:00 扱い。 | 日付欄、日時欄、予測欄など。 |
-| **Time** | 時刻のみ。12時間/24時間形式。日付とは独立。 | 時刻欄など。 |
-| **List** | 要素の集合。要素の型は混在可（数値・テキスト・日付など）。要素はインデックスで参照。 | チェックボックス欄、複数選択欄など。 |
-| **Key-Value** | キーと値のペアの集合。キーは一意。同じキーを指定すると新しい値で上書き。 | 例: `{"Item" : "Magic_Mouse", "Number" : 23}` |
-| **Collection** | リスト（要素の並び）またはマップ（キー・値）のどちらか一方として扱う。リストとキー・値ペアを同時には持てない。 | 例: `Collection("Mobile phone","Laptop","Adapter");` |
-| **File** | ファイル。Deluge では Web やクラウドから取得したファイルを扱う。オフラインのファイルは操作対象外。FILE 用の組み込み関数がある。 | ファイル取得後に操作。 |
-
-**Note**: **Null** は組み込み定数で、特定の値を持たず、いずれのデータ型にも属さない。
 
 ---
 
@@ -274,6 +255,35 @@ resp = invokeurl
     type : POST
 ];
 info resp;
+```
+
+### 3.8 invokeUrl 直後の API エラー判定（4xx でも例外が出ないため必須）
+
+```deluge
+response = invokeurl
+[
+    url       : url_base + "coql"
+    type      : POST
+    parameters: coqlMap.toString()
+    connection: "crm_module"
+];
+info "COQL レスポンス全文: " + response;
+
+if (response.get("status") != null && response.get("status").toString() == "error")
+{
+    apiCode = "";
+    if (response.get("code") != null) { apiCode = response.get("code").toString(); }
+    apiMsg = "";
+    if (response.get("message") != null) { apiMsg = response.get("message").toString(); }
+    result.put("error", "COQL エラー: " + apiCode + " - " + apiMsg);
+    return result.toString();
+}
+
+data = List();
+if (response.get("data") != null)
+{
+    data = response.get("data");
+}
 ```
 
 より多くの実装例（ループ代替、attachFile、クライアントスクリプト等）は、プロジェクト内に `.claude/rules/core/zoho-deluge-rules.md` がある場合はそちらを、または本スキル同梱の `references/usage-examples.md` を参照すること。
