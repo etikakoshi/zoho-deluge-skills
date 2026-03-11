@@ -91,6 +91,37 @@ Zoho CRM の Deluge 関数を実装・レビューする際の言語制約、禁
 
 **注意**: Connections の設定名・エンドポイント・認証は環境ごとの接続定義に依存する。承認中レコードの「編集ロック」は公式に明記されているが「GET 不可」は未明記のため、挙動が変わる前提で実装し、問題があれば Zoho サポートへの確認を検討する。
 
+### APIクレジット消費数（タスク別）と関数あたり最大クレジット算出
+
+**参照**: [API Limits | Zoho CRM API | V8](https://www.zoho.com/crm/developer/docs/api/v8/api-limits.html)
+
+- クレジットは **24時間ロールリング** で集計。1関数実行あたりのクレジットは、その関数内の **全 API 呼び出しの消費合計**。
+- **関数あたり最大クレジット** は、関数の **最悪パス**（分岐で最も API を叩く経路）の各呼び出しクレジットを合計して算出する。
+- Deluge の **Integration Tasks**（`zoho.crm.getRecord` 等）は、内部で呼ぶ CRM API と同じクレジットを消費する。
+
+**COQL のクレジット**: LIMIT 1–200 → 1、201–1000 → 2、1001–2000 → 3。
+
+**主な API と消費クレジット（抜粋）**
+
+| API（タスク） | 消費クレジット |
+|---------------|----------------|
+| Get Users/Roles/Profiles、Modules、Field/Module Meta、Composite、Get Record（単体）、その他多くの GET 系 | 1 |
+| Get deleted IDs、Get Related Records Count（1関連リスト） | 2 |
+| Get records with cvid | 3 |
+| Convert Lead、Download Mail Merge | 5 |
+| Insert/Update/Upsert | 1 per 10 records（最大100件/回 → 最大10） |
+| Add/Remove Tags（複数） | 1 per 50 records（最大500件/回 → 最大10） |
+| Send Mail | 20 |
+| Merge、Mass Change Owner、Bulk Read Init、Record Count、Mass Delete (CVID)、Territory 系 等 | 50 |
+| Mass Delete by ids | 1 per 100 records |
+| Mass Convert Leads | 200 |
+| Bulk Write Init、Transfer & Delete User、Create Custom Module | 500 |
+| Create/Update/Delete Custom Field | 10 per field |
+| Data Sharing Rule（作成・更新・削除 250、一覧10、1件1） | 250 / 10 / 1 |
+| 上記以外の API | 1 |
+
+完全な一覧・エディション別上限は [API Limits（v8）](https://www.zoho.com/crm/developer/docs/api/v8/api-limits.html) を参照すること。
+
 ### 関数テンプレート（順序厳守）
 
 1. 関数宣言  
