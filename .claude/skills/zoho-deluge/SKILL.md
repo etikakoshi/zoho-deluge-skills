@@ -53,6 +53,26 @@ Zoho CRM の Deluge 関数を実装・レビューする際の言語制約、禁
 - 取得: `zoho.crm.getOrgVariable("dc")`, `zoho.crm.getOrgVariable("version")`
 - 追加の組織変数は厳禁（定義済みのみ使用）。
 
+### ウィジェット（Embedded App）から関数実行時の `loginuser` 仕様
+
+Zoho CRM の **ウィジェット（Embedded App）**から `ZOHO.CRM.FUNCTIONS.execute()` で Deluge カスタム関数を起動した場合、関数内の `zoho.loginuser` / `zoho.loginuserid` は **画面の操作ユーザーを表さない**ことがある。
+
+- **挙動**: 操作ユーザーが特定できない場合、`loginuser` には **関数管理者（関数所有者等）のユーザー**が反映されることがある。
+- **結論**: ウィジェット起点の処理で「操作ユーザー」を使う設計にする場合、Deluge 側の `zoho.loginuser` に依存しないこと。
+
+**推奨代替案（仕様）**
+
+- ウィジェット側で `ZOHO.CRM.CONFIG.getCurrentUser()` を用いて **操作ユーザー情報（id/email/full_name 等）**を取得し、`arguments` として **関数に引数で渡す**。
+- Deluge 側は `zoho.loginuser` ではなく、渡された `loginUserId` / `loginUserEmail` / `loginUserName` を利用する。
+
+**実装メモ（戻り値形式の注意）**
+
+- `getCurrentUser()` は環境により `{ users: [...] }` 形式で返ることがあるため、`users[0]` を優先して扱う。
+
+**運用メモ（真っ白/404 の典型）**
+
+- ウィジェットZIP内の `index.html` 位置と「インデックスページ」設定パスが不一致だと 404 になり真っ白になる。Zoho 側が `/app/index.html` 前提の場合は ZIP を `app/index.html` 構造に合わせる。
+
 ### ベースURL構築
 
 - Sandbox: `baseDomain = "sandbox.zohoapis." + dc`
